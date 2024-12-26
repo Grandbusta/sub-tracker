@@ -7,21 +7,17 @@ use axum::{
 use serde_json::json;
 use sqlx::PgPool;
 use crate::models;
+use crate::utils;
+use crate::db;
 
 pub async fn create_user(
     State(db_pool): State<PgPool>,
-    Json(user): Json<models::CreateUserReq>
+    Json(user): Json<models::user::CreateUserReq>
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
 
-    let existing_user = sqlx::query!(
-        "SELECT * FROM users WHERE email = $1",
-        user.email
-    ).fetch_one(&db_pool).await.map_err(|e|(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        json!({
-            "message": "Failed to create user"
-        }).to_string()
-    ) );
+    let existing_user = db::user::get_user_by_email(
+        &user.email, &db_pool
+    ).await;
 
     if existing_user.is_ok() {
         return Ok((
@@ -34,12 +30,13 @@ pub async fn create_user(
         ))
     }
 
-    let row = sqlx::query_as!(
-        models::User,
-        "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
-        user.email,
-        user.password
-    ).fetch_one(&db_pool).await.map_err(|e|(
+    let hashed_password = utils::password::hash_password(&user.password);
+    let user = models::user::CreateUserReq {
+        email: user.email,
+        password: hashed_password
+    };
+
+    let created_user=db::user::save_user(&user, &db_pool).await.map_err(|e|(
         StatusCode::INTERNAL_SERVER_ERROR,
         Json(
             json!({
@@ -50,10 +47,17 @@ pub async fn create_user(
 
     Ok((StatusCode::CREATED, 
         Json(json!({
-        "id": row.id,
-        "email": row.email,
-        "password": row.password,
-        "created_at": row.created_at
+        "id": created_user.id,
+        "email": created_user.email,
+        "created_at": created_user.created_at
     }))
 ))
+}
+
+pub async fn login_user(
+    State(db_pool): State<PgPool>,
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
+    Ok((StatusCode::OK, Json(json!({
+        "message": "Login successful"
+    }))))
 }

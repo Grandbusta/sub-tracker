@@ -11,7 +11,8 @@ use std::env;
 
 mod models;
 mod controllers;
-
+mod utils;
+mod db;
 
 #[tokio::main]
 async fn main() {
@@ -24,11 +25,11 @@ async fn main() {
         .max_connections(10).connect(&db_url)
         .await.expect("Failed to connect to database");
 
-    sqlx::migrate!("src/migrations").run(&db_pool).await.expect("Failed to run migrations");
+    sqlx::migrate!("src/db/migrations").run(&db_pool).await.expect("Failed to run migrations");
 
     let app = Router::new()
         .route("/", get(hello_world))
-        .route("/user", post(controllers::create_user))
+        .route("/user", post(controllers::user::create_user))
         .with_state(db_pool);
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
