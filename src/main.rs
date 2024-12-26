@@ -29,7 +29,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(hello_world))
-        .route("/user", post(controllers::user::create_user))
+        .route("/user/create", post(controllers::user::create_user))
+        .route("/user/login", post(controllers::user::login_user))
         .with_state(db_pool);
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
