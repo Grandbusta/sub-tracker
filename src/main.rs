@@ -1,6 +1,5 @@
 use axum::{
     extract::{Path,State},
-    http::StatusCode,
     routing::{get, post},
     Router
 };
@@ -14,6 +13,11 @@ mod controllers;
 mod utils;
 mod db;
 
+#[derive(Clone)]
+pub struct AppState {
+    pub db_pool: Pool<Postgres>
+}
+
 #[tokio::main]
 async fn main() {
     println!("Hello, world!");
@@ -25,13 +29,16 @@ async fn main() {
         .max_connections(10).connect(&db_url)
         .await.expect("Failed to connect to database");
 
-    sqlx::migrate!("src/db/migrations").run(&db_pool).await.expect("Failed to run migrations");
+    let shared_state = AppState {
+        db_pool,
+    };
+
+    sqlx::migrate!("src/db/migrations").run(&shared_state.db_pool).await.expect("Failed to run migrations");
 
     let app = Router::new()
-        .route("/", get(hello_world))
-        .route("/user/create", post(controllers::user::create_user))
-        .route("/user/login", post(controllers::user::login_user))
-        .with_state(db_pool);
+        .nest("/user", user_routes())
+        .nest("/subscription", subscription_routes())
+        .with_state(shared_state);
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
@@ -39,6 +46,13 @@ async fn main() {
 }
 
 
-async fn hello_world() -> &'static str {
-    return "Hello World!"
+fn user_routes() -> Router<AppState> {
+    Router::new()
+        .route("/create", post(controllers::user::create_user))
+        .route("/login", post(controllers::user::login_user))
+}
+
+fn subscription_routes() -> Router<AppState> {
+    Router::new()
+        .route("/create", post(controllers::subscription::create_subscription))
 }

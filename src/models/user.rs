@@ -20,6 +20,5 @@ pub struct CreateUserReq {
 pub struct CreateUserRes {
     pub id: uuid::Uuid,
     pub email: String,
-    pub password: String,
     pub created_at: NaiveDateTime
 }

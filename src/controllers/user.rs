@@ -1,17 +1,16 @@
 use axum::{
-    extract::{Path,State},
+    extract::State,
     http::StatusCode,
-    routing::{get, post},
     Json
 };
 use serde_json::json;
-use sqlx::PgPool;
 use crate::models;
 use crate::utils;
 use crate::db;
+use crate::AppState;
 
 pub async fn create_user(
-    State(db_pool): State<PgPool>,
+    State(app_state): State<AppState>,
     Json(body): Json<models::user::CreateUserReq>
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
 
@@ -21,7 +20,7 @@ pub async fn create_user(
         password: hashed_password
     };
 
-    let created_user=db::user::save_user(&user, &db_pool).await;
+    let created_user=db::user::save_user(&user, &app_state.db_pool).await;
 
     match created_user {
         Ok(user) => {
@@ -29,9 +28,12 @@ pub async fn create_user(
                 StatusCode::CREATED,
                 Json(
                     json!({
-                        "id": user.id,
-                        "email": user.email,
-                        "created_at": user.created_at
+                        "message": "User created successfully",
+                        "data":{
+                            "id": user.id,
+                            "email": user.email,
+                            "created_at": user.created_at
+                        }
                     })
                 )
             ))
@@ -57,7 +59,7 @@ pub async fn create_user(
                 ))
             }
         },
-        Err(e) => {
+        Err(_e) => {
             return Ok((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(
@@ -71,15 +73,15 @@ pub async fn create_user(
 }
 
 pub async fn login_user(
-    State(db_pool): State<PgPool>,
+    State(app_state): State<AppState>,
     Json(body): Json<models::user::CreateUserReq>
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
 
     let existing_user = match db::user::get_user_by_email(
-        &body.email, &db_pool
+        &body.email, &app_state.db_pool
     ).await {
         Ok(user) => user,
-        Err(e) => return Ok((
+        Err(_e) => return Ok((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(
                 json!({
@@ -119,7 +121,6 @@ let token = match utils::token::create_token(
 ) {
     Ok(t) => t,
     Err(_e) => {
-        // Return an HTTP 500 (or another code) plus JSON message
         return Ok((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({
