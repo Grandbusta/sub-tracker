@@ -14,19 +14,6 @@ pub async fn get_user_by_email(
     Ok(user)
 }
 
-pub async fn get_user_by_id(
-    id: &uuid::Uuid,
-    db_pool: &Pool<Postgres>
-) -> Result<Option<models::user::User>, sqlx::Error> {
-    let user = sqlx::query_as!(
-        models::user::User,
-        "SELECT * FROM users WHERE id = $1",
-        id
-    ).fetch_optional(db_pool).await?;
-
-    Ok(user)
-}
-
 pub async fn save_user(
     user: &models::user::CreateUserReq,
     db_pool: &Pool<Postgres>

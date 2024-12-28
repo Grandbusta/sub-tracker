@@ -1,6 +1,5 @@
 use axum::{
-    extract::{Path,State},
-    routing::{get, post},
+    middleware, routing::{delete, get, patch, post},
     Router
 };
 use sqlx::{pool::PoolOptions, Pool, Postgres};
@@ -12,6 +11,7 @@ mod models;
 mod controllers;
 mod utils;
 mod db;
+mod middlewares;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -50,9 +50,22 @@ fn user_routes() -> Router<AppState> {
     Router::new()
         .route("/create", post(controllers::user::create_user))
         .route("/login", post(controllers::user::login_user))
+        .route("/:user_id/subscriptions", get(
+            controllers::subscription::get_user_subscriptions
+        ).layer(middleware::from_fn(middlewares::auth::verify_token)))
 }
 
 fn subscription_routes() -> Router<AppState> {
     Router::new()
         .route("/create", post(controllers::subscription::create_subscription))
+        .route("/:subscription_id", get(
+            controllers::subscription::get_subscription_by_id
+        ))
+        .route("/:subscription_id", patch(
+            controllers::subscription::update_subscription
+        ))
+        .route("/:subscription_id", delete(
+            controllers::subscription::delete_subscription
+        ))
+        .layer(middleware::from_fn(middlewares::auth::verify_token))
 }
