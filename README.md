@@ -4,6 +4,8 @@ A small, Rust-based subscription tracker built with Axum and SQLx. This service 
 
 ## Features
 
+- **Create a user**
+- **Login a user**
 - **Create a subscription** (e.g. Netflix, Spotify)
 - **Retrieve** a subscription by ID
 - **List** all subscriptions for a given user
